@@ -9,21 +9,50 @@ function updateTime() {
     document.getElementById('currentTime').textContent = timeStr;
 }
 
-// Scratchのフォロワー数を取得
+// Scratchのフォロワー数を取得（複数のプロキシを試す）
 async function fetchFollowers() {
-    try {
-        // CORSプロキシを使用
-        const proxyUrl = 'https://corsproxy.io/?url=';
-        const apiUrl = 'https://api.scratch.mit.edu/users/88942731arduinoIDE';
-        const fullUrl = proxyUrl + encodeURIComponent(apiUrl);
-        
-        const response = await fetch(fullUrl);
-        const data = await response.json();
-        return data.followers;
-    } catch (error) {
-        console.error('フォロワー数取得エラー:', error);
-        return null;
+    const apiUrl = 'https://api.scratch.mit.edu/users/88942731arduinoIDE';
+    
+    // 複数のCORSプロキシを試す
+    const proxies = [
+        'https://api.allorigins.win/raw?url=',
+        'https://cors-anywhere.herokuapp.com/',
+        'https://thingproxy.freeboard.io/fetch/',
+    ];
+    
+    for (let proxy of proxies) {
+        try {
+            let url;
+            if (proxy.includes('allorigins')) {
+                url = proxy + encodeURIComponent(apiUrl);
+            } else if (proxy.includes('thingproxy')) {
+                url = proxy + apiUrl;
+            } else {
+                url = proxy + apiUrl;
+            }
+            
+            const response = await fetch(url, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.followers !== undefined) {
+                    console.log('フォロワー数取得成功:', data.followers);
+                    return data.followers;
+                }
+            }
+        } catch (error) {
+            console.log(`プロキシ ${proxy} 失敗:`, error.message);
+            continue;
+        }
     }
+    
+    // すべてのプロキシが失敗した場合
+    console.error('すべてのプロキシでの取得に失敗しました');
+    return null;
 }
 
 // フォロワー数を更新
@@ -32,7 +61,7 @@ async function updateFollowers() {
     
     if (currentFollowers === null) {
         document.getElementById('followerCount').textContent = 'エラー';
-        document.getElementById('lastUpdate').textContent = 'API接続に失敗しました';
+        document.getElementById('lastUpdate').textContent = 'Scratch APIに接続できません（リトライ中...）';
         return;
     }
     
