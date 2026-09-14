@@ -12,7 +12,12 @@ function updateTime() {
 // Scratchのフォロワー数を取得
 async function fetchFollowers() {
     try {
-        const response = await fetch('https://api.scratch.mit.edu/users/88942731arduinoIDE');
+        // CORSプロキシを使用
+        const proxyUrl = 'https://corsproxy.io/?url=';
+        const apiUrl = 'https://api.scratch.mit.edu/users/88942731arduinoIDE';
+        const fullUrl = proxyUrl + encodeURIComponent(apiUrl);
+        
+        const response = await fetch(fullUrl);
         const data = await response.json();
         return data.followers;
     } catch (error) {
@@ -27,6 +32,7 @@ async function updateFollowers() {
     
     if (currentFollowers === null) {
         document.getElementById('followerCount').textContent = 'エラー';
+        document.getElementById('lastUpdate').textContent = 'API接続に失敗しました';
         return;
     }
     
