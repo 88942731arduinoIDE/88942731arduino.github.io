@@ -10,27 +10,20 @@ function updateTime() {
     document.getElementById('currentTime').textContent = timeStr;
 }
 
-// Scratchのフォロワー数を取得
+// Scratchのフォロワー数を取得（ScratchDB APIを使用）
 async function fetchFollowers() {
     try {
-        // 正しいエンドポイント: /followers
-        const apiUrl = 'https://api.scratch.mit.edu/users/88942731arduinoIDE/followers';
+        // ScratchDB API（非公式）
+        const apiUrl = 'https://scratchdb.lefty.one/v3/user/info/88942731arduinoIDE';
         
-        // CORSプロキシを通す
-        const proxyUrl = 'https://api.allorigins.win/raw?url=';
-        const fullUrl = proxyUrl + encodeURIComponent(apiUrl);
-        
-        const response = await fetch(fullUrl);
+        const response = await fetch(apiUrl);
         
         if (response.ok) {
-            const text = await response.text();
-            const data = JSON.parse(text);
+            const data = await response.json();
             
-            // 配列の長さがフォロワー数
-            if (Array.isArray(data)) {
-                const count = data.length;
-                console.log('✅ フォロワー数取得成功:', count);
-                return count;
+            if (data.statistics && data.statistics.followers !== undefined) {
+                console.log('✅ フォロワー数取得成功:', data.statistics.followers);
+                return data.statistics.followers;
             }
         }
         
