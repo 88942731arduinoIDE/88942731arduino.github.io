@@ -13,8 +13,8 @@ function updateTime() {
 // Scratchのフォロワー数を取得
 async function fetchFollowers() {
     try {
-        // 正しいエンドポイント: /followers/count
-        const apiUrl = 'https://api.scratch.mit.edu/users/88942731arduinoIDE/followers/count';
+        // 正しいエンドポイント: /followers
+        const apiUrl = 'https://api.scratch.mit.edu/users/88942731arduinoIDE/followers';
         
         // CORSプロキシを通す
         const proxyUrl = 'https://api.allorigins.win/raw?url=';
@@ -26,9 +26,11 @@ async function fetchFollowers() {
             const text = await response.text();
             const data = JSON.parse(text);
             
-            if (data.count !== undefined) {
-                console.log('✅ フォロワー数取得成功:', data.count);
-                return data.count;
+            // 配列の長さがフォロワー数
+            if (Array.isArray(data)) {
+                const count = data.length;
+                console.log('✅ フォロワー数取得成功:', count);
+                return count;
             }
         }
         
