@@ -1,6 +1,7 @@
 let previousFollowers = null;
 let increaseCount = 0;
 let history = [];
+let isFirstLoad = true;
 
 // 時刻を更新
 function updateTime() {
@@ -9,50 +10,51 @@ function updateTime() {
     document.getElementById('currentTime').textContent = timeStr;
 }
 
-// Scratchのフォロワー数を取得（複数のプロキシを試す）
+// Scratchのフォロワー数を取得
 async function fetchFollowers() {
-    const apiUrl = 'https://api.scratch.mit.edu/users/88942731arduinoIDE';
-    
-    // 複数のCORSプロキシを試す
-    const proxies = [
-        'https://api.allorigins.win/raw?url=',
-        'https://cors-anywhere.herokuapp.com/',
-        'https://thingproxy.freeboard.io/fetch/',
-    ];
-    
-    for (let proxy of proxies) {
+    try {
+        // 直接 JSONP を使ってアクセス（CORSなし）
+        const username = '88942731arduinoIDE';
+        const apiUrl = `https://api.scratch.mit.edu/users/${username}`;
+        
+        // 1. allorigins（JSON形式で返してくれる）
         try {
-            let url;
-            if (proxy.includes('allorigins')) {
-                url = proxy + encodeURIComponent(apiUrl);
-            } else if (proxy.includes('thingproxy')) {
-                url = proxy + apiUrl;
-            } else {
-                url = proxy + apiUrl;
-            }
-            
-            const response = await fetch(url, {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
+            const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`);
             if (response.ok) {
-                const data = await response.json();
+                const text = await response.text();
+                const data = JSON.parse(text);
                 if (data.followers !== undefined) {
-                    console.log('フォロワー数取得成功:', data.followers);
+                    console.log('✅ フォロワー数取得成功:', data.followers);
                     return data.followers;
                 }
             }
-        } catch (error) {
-            console.log(`プロキシ ${proxy} 失敗:`, error.message);
-            continue;
+        } catch (e) {
+            console.log('allorigins失敗');
         }
+        
+        // 2. JSONPlaceholder CORS を試す
+        try {
+            const response = await fetch(`https://jsonplaceholder.typicode.com/posts/1`);
+            // 実際のScratch APIを試す（同一オリジンなら動く場合もある）
+            const scratchResponse = await fetch(apiUrl, {
+                mode: 'no-cors'
+            });
+            if (scratchResponse.ok) {
+                const data = await scratchResponse.json();
+                if (data.followers !== undefined) {
+                    console.log('✅ Scratch API直接取得成功:', data.followers);
+                    return data.followers;
+                }
+            }
+        } catch (e) {
+            console.log('直接取得失敗');
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('エラー:', error);
+        return null;
     }
-    
-    // すべてのプロキシが失敗した場合
-    console.error('すべてのプロキシでの取得に失敗しました');
-    return null;
 }
 
 // フォロワー数を更新
@@ -60,8 +62,9 @@ async function updateFollowers() {
     const currentFollowers = await fetchFollowers();
     
     if (currentFollowers === null) {
-        document.getElementById('followerCount').textContent = 'エラー';
-        document.getElementById('lastUpdate').textContent = 'Scratch APIに接続できません（リトライ中...）';
+        document.getElementById('followerCount').textContent = 'エラー（ネット接続確認）';
+        document.getElementById('lastUpdate').textContent = 'APIに接続できません';
+        console.warn('API接続失敗 - リトライ中...');
         return;
     }
     
@@ -70,17 +73,21 @@ async function updateFollowers() {
     const now = new Date();
     document.getElementById('lastUpdate').textContent = `最終更新: ${now.toLocaleTimeString('ja-JP')}`;
     
-    // 初回チェック
-    if (previousFollowers === null) {
+    // 初回チェック（フォロワー数を記録するだけ）
+    if (isFirstLoad) {
         previousFollowers = currentFollowers;
+        isFirstLoad = false;
+        console.log('初期フォロワー数:', currentFollowers);
         return;
     }
     
-    // フォロワーが増えたかチェック
+    // 2回目以降：フォロワーが増えたかチェック
     if (currentFollowers > previousFollowers) {
         const increase = currentFollowers - previousFollowers;
         increaseCount += increase;
         document.getElementById('increaseCount').textContent = increaseCount;
+        
+        console.log(`🎉 フォロワー増加！ ${previousFollowers} → ${currentFollowers} (+${increase})`);
         
         // 派手に祝う
         celebrate();
@@ -139,7 +146,7 @@ function createConfetti() {
     const confettiPieces = [];
     const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#ffd93d', '#ff8c42', '#a8d8ea'];
     
-    // 紙吹雪を生成
+    // 紙吹雪を��成
     for (let i = 0; i < 100; i++) {
         confettiPieces.push({
             x: Math.random() * canvas.width,
@@ -244,6 +251,7 @@ window.addEventListener('resize', () => {
 });
 
 // 初期化と定期更新
+console.log('🎮 Scratch フォロワーカウンター 起動...');
 updateTime();
 updateFollowers();
 
@@ -252,5 +260,3 @@ setInterval(updateFollowers, 1000);
 
 // 時刻を毎秒更新
 setInterval(updateTime, 1000);
-
-console.log('🎮 Scratch フォロワーカウンター起動！');
